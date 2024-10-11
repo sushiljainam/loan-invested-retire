@@ -1,0 +1,223 @@
+<!-- // index.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retirement Loan Calculator</title>
+    <script src="https://unpkg.com/react@17.0.2/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17.0.2/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const App = () => {
+            const [inputs, setInputs] = React.useState({
+                loanAmount: 100000,
+                annualInterestRate: 5,
+                loanTermYears: 10,
+                investmentInterestRate: 7,
+                monthlyExpense: 2000,
+                monthlyExpenseGrowth: 10
+            });
+            const [results, setResults] = React.useState([]);
+
+            const handleInputChange = (e) => {
+                const { name, value } = e.target;
+                setInputs(prev => ({ ...prev, [name]: parseFloat(value) }));
+            };
+
+            const calculateResults = () => {
+                const {
+                    loanAmount,
+                    annualInterestRate,
+                    loanTermYears,
+                    investmentInterestRate,
+                    monthlyExpense,
+                    monthlyExpenseGrowth
+                } = inputs;
+
+                const monthlyInterestRate = annualInterestRate / 100 / 12;
+                const totalMonths = loanTermYears * 12;
+                const monthlyInvestmentRate = investmentInterestRate / 100 / 12;
+
+                const emi = loanAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, totalMonths) / (Math.pow(1 + monthlyInterestRate, totalMonths) - 1);
+
+                let loanBalance = loanAmount;
+                let investmentBalance = loanAmount - monthlyExpense;
+                let currentMonthlyExpense = monthlyExpense;
+
+                const newResults = [];
+
+                for (let month = 1; month <= totalMonths; month++) {
+                    // Increase monthly expense annually
+                    if (month % 12 === 1 && month > 1) {
+                        currentMonthlyExpense *= (1 + monthlyExpenseGrowth / 100);
+                    }
+
+                    // Calculate interest and update balances
+                    const loanInterest = loanBalance * monthlyInterestRate;
+                    const loanPrincipal = emi - loanInterest;
+                    const investmentInterest = investmentBalance * monthlyInvestmentRate;
+
+                    investmentBalance = investmentBalance * (1 + monthlyInvestmentRate) - currentMonthlyExpense;
+                    investmentBalance = Math.max(0, investmentBalance - emi);
+
+                    loanBalance -= loanPrincipal;
+
+                    newResults.push({
+                        month,
+                        loanBalance: Math.max(0, loanBalance),
+                        loanInterest,
+                        loanPrincipal,
+                        investmentBalance: Math.max(0, investmentBalance),
+                        investmentInterest,
+                        currentMonthlyExpense,
+                        netBalance: investmentBalance - loanBalance
+                    });
+
+                    if (loanBalance <= 0 && investmentBalance <= 0) break;
+                }
+
+                setResults(newResults);
+            };
+
+            return (
+                <div className="container">
+                    <h1>Retirement Loan Calculator</h1>
+                    <div className="input-group">
+                        <label>Loan Amount:</label>
+                        <input type="number" name="loanAmount" value={inputs.loanAmount} onChange={handleInputChange} />
+                    </div>
+                    <div className="input-group">
+                        <label>Annual Interest Rate (%):</label>
+                        <input type="number" name="annualInterestRate" value={inputs.annualInterestRate} onChange={handleInputChange} />
+                    </div>
+                    <div className="input-group">
+                        <label>Loan Term (Years):</label>
+                        <input type="number" name="loanTermYears" value={inputs.loanTermYears} onChange={handleInputChange} />
+                    </div>
+                    <div className="input-group">
+                        <label>Investment Interest Rate (%):</label>
+                        <input type="number" name="investmentInterestRate" value={inputs.investmentInterestRate} onChange={handleInputChange} />
+                    </div>
+                    <div className="input-group">
+                        <label>Monthly Expense:</label>
+                        <input type="number" name="monthlyExpense" value={inputs.monthlyExpense} onChange={handleInputChange} />
+                    </div>
+                    <div className="input-group">
+                        <label>Monthly Expense Growth (% per year):</label>
+                        <input type="number" name="monthlyExpenseGrowth" value={inputs.monthlyExpenseGrowth} onChange={handleInputChange} />
+                    </div>
+                    <button onClick={calculateResults}>Calculate</button>
+
+                    {results.length > 0 && (
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Loan Balance</th>
+                                    <th>Loan Interest</th>
+                                    <th>Loan Principal</th>
+                                    <th>Investment Balance</th>
+                                    <th>Investment Interest</th>
+                                    <th>Monthly Expense</th>
+                                    <th>Net Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {results.map((row) => (
+                                    <tr key={row.month}>
+                                        <td>{row.month}</td>
+                                        <td>{row.loanBalance.toFixed(2)}</td>
+                                        <td>{row.loanInterest.toFixed(2)}</td>
+                                        <td>{row.loanPrincipal.toFixed(2)}</td>
+                                        <td>{row.investmentBalance.toFixed(2)}</td>
+                                        <td>{row.investmentInterest.toFixed(2)}</td>
+                                        <td>{row.currentMonthlyExpense.toFixed(2)}</td>
+                                        <td>{row.netBalance.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+
+</html>
